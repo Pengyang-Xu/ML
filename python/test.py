@@ -32,7 +32,8 @@ class CombinedAttributesAdder(BaseEstimator, TransformerMixin):
         else:
             return np.c_[X, rooms_per_household, population_per_household]
 
-# this is a test 
+# this is a test
+# test2
 
 def load_housing_data(housing_path):
     csv_path = os.path.join(housing_path, "housing.csv")
