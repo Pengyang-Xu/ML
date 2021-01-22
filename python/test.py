@@ -38,7 +38,6 @@ def load_housing_data(housing_path):
     csv_path = os.path.join(housing_path, "housing.csv")
     return pd.read_csv(csv_path)
 
-
 housing_path = "C:\\Users\\penxu\\HandON_ML\\handson-ml-master\\datasets\\housing"
 housing = load_housing_data(housing_path)
 
