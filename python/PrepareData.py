@@ -147,11 +147,90 @@ print('ok')
 lin_reg = LinearRegression()
 lin_reg.fit(old_housing_prepared, housing_labels) # the model
 
-# 使用训练的模型进行预测
-some_data = housingd.iloc[:5]
-print(some_data.info())
-some_labels = housing_labels.iloc[:5]
-some_data_prepared = old_full_pipeline.transform(some_data)
-pridects = lin_reg.predict(some_data_prepared)
-print(pridects)
-print(some_labels)
+from sklearn.tree import DecisionTreeRegressor
+tree_reg = DecisionTreeRegressor(random_state=42)
+tree_reg.fit(old_housing_prepared, housing_labels)
+
+from sklearn.ensemble import RandomForestRegressor
+forest_reg = RandomForestRegressor(n_estimators=100, random_state=42)
+forest_reg.fit(old_housing_prepared, housing_labels)
+
+from sklearn.svm import SVR
+svm_reg = SVR(kernel="linear")
+svm_reg.fit(old_housing_prepared, housing_labels)
+
+if False:
+    # 使用训练的模型进行预测
+    some_data = housingd.iloc[:5]
+    print(some_data.info())
+    some_labels = housing_labels.iloc[:5]
+    some_data_prepared = old_full_pipeline.transform(some_data)
+    pridects = lin_reg.predict(some_data_prepared)
+    print(pridects)
+    print(some_labels)
+
+#评估模型
+from sklearn.metrics import mean_squared_error
+housing_predictions = lin_reg.predict(old_housing_prepared)
+lin_mse = mean_squared_error(housing_labels, housing_predictions)
+lin_rmse = np.sqrt(lin_mse)
+print(lin_rmse)
+
+print(20*'-')
+housing_predictions_tree = svm_reg.predict(old_housing_prepared)
+tree_lin_mse = mean_squared_error(housing_labels,housing_predictions_tree)
+tree_lin_rmse = np.sqrt(tree_lin_mse)
+print(tree_lin_rmse)
+
+#交叉验证评估 tree_reg
+from sklearn.model_selection import cross_val_score
+scores = cross_val_score(tree_reg, old_housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+tree_rmse_scores = np.sqrt(-scores)
+def display_scores(scores):
+    print("Scores:", scores)
+    print("Mean:", scores.mean())
+    print("Standard deviation:", scores.std())
+
+print(display_scores(tree_rmse_scores))
+
+# 调整参数（超参数）， 网格搜索,适合少量参数组合
+if False:
+    from sklearn.model_selection import GridSearchCV
+    param_grid = [
+        # try 12 (3×4) combinations of hyperparameters
+        {'n_estimators': [3, 10, 30], 'max_features': [2, 4, 6, 8]},
+        # then try 6 (2×3) combinations with bootstrap set as False
+        {'bootstrap': [False], 'n_estimators': [3, 10], 'max_features': [2, 3, 4]},
+      ]
+    forest_reg = RandomForestRegressor(random_state=42)
+    # train across 5 folds, that's a total of (12+6)*5=90 rounds of training
+    grid_search = GridSearchCV(forest_reg, param_grid, cv=5,scoring='neg_mean_squared_error',return_train_score=True)
+    grid_search.fit(old_housing_prepared, housing_labels)
+    print(grid_search.best_params_)
+
+# 调整参数（超参数），随机搜索,适合大量参数组合
+if True:
+    from sklearn.model_selection import RandomizedSearchCV
+    from scipy.stats import randint
+    param_distribs = {
+            'n_estimators': randint(low=1, high=200),
+            'max_features': randint(low=1, high=8),
+        }
+    forest_reg = RandomForestRegressor(random_state=42)
+    rnd_search = RandomizedSearchCV(forest_reg, param_distributions=param_distribs,n_iter=10, cv=5, scoring='neg_mean_squared_error', random_state=42)
+    rnd_search.fit(old_housing_prepared, housing_labels)
+    feature_importances = grid_search.best_estimator_.feature_importances_
+    print(feature_importances)
+
+    # 查看模型在测试集上的表现
+    final_model = rnd_search.best_estimator_
+
+    X_test = strat_test_set.drop("median_house_value", axis=1)
+    y_test = strat_test_set["median_house_value"].copy()
+
+    X_test_prepared = full_pipeline.transform(X_test)
+    final_predictions = final_model.predict(X_test_prepared)
+
+    final_mse = mean_squared_error(y_test, final_predictions)
+    final_rmse = np.sqrt(final_mse)
+    print(final_rmse)
